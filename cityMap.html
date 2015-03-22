@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+
+		<!-- Always force latest IE rendering engine (even in intranet) & Chrome Frame
+		Remove this if you use the .htaccess -->
+		<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+
+		<title>cityMap</title>
+		<meta name="description" content="" />
+		<meta name="author" content="acer" />
+
+		<meta name="viewport" content="width=device-width initial-scale=1.0" />
+
+		<!-- Replace favicon.ico & apple-touch-icon.png in the root of your domain and delete these references -->
+		<link rel="shortcut icon" href="/favicon.ico" />
+		<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+		<script src="Scripts/libs/three.min.js" type="text/javascript" charset="utf-8"></script>
+		<script src="Scripts/libs/controls/FirstPersonControls.js" type="text/javascript" charset="utf-8"></script>
+		<script src="Scripts/libs/shaders/ParallaxShader.js"></script>
+		<script src="Scripts/Utils/Loader.js" type="text/javascript" charset="utf-8"></script>
+	</head>
+
+	<body >
+		<div id="container">
+		</div>
+		<script>
+			var scene, camera,light,renderer, SCREEN_WIDTH, SCREEN_HEIGHT, controls, clock,spwanPoints,	brickmat,
+				brickBumpTexture,
+				map = 	'  XXXXXXXXX\n'+
+					'    	       X\n'+
+					'X S XXXXX     X\n'+
+					'X   XXXXX     X\n'+
+					'X  S          X\n'+
+					'X  S    XX    X\n'+
+					'X     XXXX    X\n'+
+					'X   S         X\n'+
+					'XXXXXXXXXXXXXXX\n';
+					
+				window.addEventListener( 'resize', onWindowResize, false );		
+				init();
+				animate();
+					
+			
+			function init(){
+				
+				SCREEN_WIDTH =  window.innerWidth;
+				SCREEN_HEIGHT = window.innerHeight;
+				spwanPoints = [];
+				
+				var oScope = this, VIEW_ANGLE = 35, ASPECT = SCREEN_WIDTH / SCREEN_HEIGHT, NEAR = 1, FAR = 20000; 
+				scene = new THREE.Scene();
+				camera = new THREE.PerspectiveCamera(VIEW_ANGLE, ASPECT, NEAR, FAR);
+				camera.position.set(0, 50, 100);
+				
+				controls = new THREE.FirstPersonControls( camera );
+
+				controls.movementSpeed = 1000;			
+				controls.lookSpeed = 0.1;
+				controls.lookVertical = false;
+
+				controls.lon = -45;
+				clock = new THREE.Clock();
+
+				scene.add( new THREE.AmbientLight( 0xddcccc) )
+				
+				var pointLight1 = new THREE.PointLight( 0xff0000, 1, 100 );
+				pointLight1.position.set( 150, 100, -250);
+				scene.add( pointLight1 );
+				var sphereSize = 1;
+				var pointLightHelper1 = new THREE.PointLightHelper( pointLight1, sphereSize );
+				scene.add( pointLightHelper1 );
+
+				var pointLight2 = new THREE.PointLight( 0xff0000, 1, 100 );
+				pointLight2.position.set( 1350, 100, -600);
+				scene.add( pointLight2 );
+				var pointLightHelper2 = new THREE.PointLightHelper( pointLight2, sphereSize );
+				scene.add( pointLightHelper2 );
+
+				
+				
+				
+
+
+				//mainspotLight.position.set( 150, 100, -250);
+				
+				//scene.add(spotLight);
+				
+//				spotLight.castShadow = true;
+				
+				// spotLight.shadowMapWidth = 1024;
+				// spotLight.shadowMapHeight = 1024;
+// 				
+				// spotLight.shadowCameraNear = 50;
+				// spotLight.shadowCameraFar = 4000;
+				// spotLight.shadowCameraFov = 60;
+
+				
+				brickmat  			= new THREE.MeshPhongMaterial();
+				brickmat.map 		= THREE.ImageUtils.loadTexture( 'Assets/Texture/brick_diffuse.jpg' );
+				//brickmat.bumpMap 	= THREE.ImageUtils.loadTexture( 'Assets/Texture/brick_bump.jpg' );
+				brickmat.map.anisotropy = 2;
+				//brickmat.bumpMap.anisotropy = 10;
+
+				
+				var geo = new THREE.PlaneBufferGeometry(1500, 900 );
+				var met = new THREE.MeshBasicMaterial({color:0xcccccc});
+				var plane = new THREE.Mesh(geo, met);
+							
+				plane.position.set(750,0,-350);
+				plane.rotation.x = -(Math.PI/2);
+				scene.add(plane);
+				
+				camera.lookAt(plane);
+				map = map.split('\n');
+				var rows, cols;
+				for(var i= 0; i < map.length;  i++){
+					for(var j= 0; j < map[i].length;  j++){
+						addVoxel(map[i].charAt(j), i , j);
+					}
+				}
+				
+				// prepare renderer
+				renderer = new THREE.WebGLRenderer({
+					antialias : true
+				});
+				
+				renderer.setSize(SCREEN_WIDTH, SCREEN_HEIGHT);
+				renderer.setClearColor(0x5555ff);
+				renderer.shadowMapEnabled = true;
+				renderer.shadowMapSoft = true;
+				
+				document.getElementById('container').appendChild(renderer.domElement);
+			}
+			
+			function addVoxel(type, row, col){
+				console.log('addVoxel {  type = '+ type+' | row = '+row+' | col = '+col);
+				var horizontal_unit = 100;
+				var vertical_unit 	=	100;
+				var zSize = map.length * horizontal_unit;
+				var xSize = map[0].length * vertical_unit;
+				
+				var z = (row * -horizontal_unit) + (horizontal_unit/2) ;
+				var x = (col * horizontal_unit) + (vertical_unit/2);
+				console.log('addVoxel {  x = '+ x+' | z = '+z);
+				switch(type){
+					case ' ' :break;
+					
+					case 'S' :
+						spwanPoints.push(new THREE.Vector3(x, 0 , z));
+					break;
+					case 'X' :
+						//console.log('brickmat = '+ brickmat);
+						var geo 	= new THREE.CubeGeometry(horizontal_unit, vertical_unit, horizontal_unit);
+				//		var met 	= new THREE.MeshPhongMaterial({ambient: 0x552811, color: 0x552811, specular: 0x333333, shininess: 25, map:brickmat});
+						var mesh 	= new THREE.Mesh(geo, brickmat);
+						mesh.position.set(x , vertical_unit * 0.5, z);
+						scene.add(mesh);
+						break;
+										
+				}
+			}
+			function animate(){
+				requestAnimationFrame( animate );
+				render();
+			}
+			function render(){
+				var delta = clock.getDelta();
+//				controls.movementSpeed 	= 1 * delta;
+				controls.update( delta );
+				renderer.render(scene, camera);
+			}
+			
+			function onWindowResize() {
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+				renderer.setSize( window.innerWidth, window.innerHeight );
+				controls.handleResize();
+
+			}
+		
+		</script>	
+	</body>
+</html>

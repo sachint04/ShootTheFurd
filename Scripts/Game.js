@@ -44,137 +44,61 @@ var Game = {
 		this.camera = new THREE.PerspectiveCamera(VIEW_ANGLE, ASPECT, NEAR, FAR);
 		this.audioListener = new THREE.AudioListener();
 		this.camera.add(this.audioListener);
+		this.camera.position.set(0,50, 120);
 		this.scene.add(this.camera);
-		// this.camera.position.set(0, 100, 300);
-		//  this.camera.lookAt(new THREE.Vector3(0,0,0));
+		
+		this.controls = new PointerLockControls( this.camera , CannonSetup.sphereBody );
+		// this.controls.lon = -45;
+        this.scene.add( this.controls.getObject() );
 
-		//prepare point locker
-		var blocker = document.getElementById('blocker');
-		var instructions = document.getElementById('instructions');
-		this.controls = new THREE.PointerLockControls(this.camera);
-		this.scene.add(this.controls.getObject());
-		var havePointerLock = 'pointerLockElement' in document || 'mozPointerLockElement' in document || 'webkitPointerLockElement' in document;
+		var light = new THREE.AmbientLight(0xcccccc);
+		// soft white light
+		Game.scene.add(light);
 
-		if (havePointerLock) {
+		// add gun light
+		Game.gunLight = new THREE.SpotLight(0xffffff);
+		Game.gunLight.position.y = 500;
 
-			var element = document.body;
-			var pointerlockchange = function(event) {
-				if (document.pointerLockElement === element || document.mozPointerLockElement === element || document.webkitPointerLockElement === element) {
-					Game.controls.enabled = true;
-					//blocker.style.display = 'none';
-				} else {
-					oGame.controls.enabled = false;
-					blocker.style.display = '-webkit-box';
-					blocker.style.display = '-moz-box';
-					blocker.style.display = 'box';
-					instructions.style.display = '';
-				}
+		Game.makeGunSite(function(mesh){
+			Game.gunSite = mesh;
+			Game.gunSite.scale.multiplyScalar(0.1);
+			Game.gunSite.name = "gunsite";
 
-			}
-			var pointerlockerror = function(event) {
+			//Game.scene.add(Game.gunSite);
+			
+		});
 
-				instructions.style.display = '';
+		// // add simple ground
+		var geo = new THREE.PlaneGeometry( 2500, 2500, 5, 5 );
+          geo.applyMatrix( new THREE.Matrix4().makeRotationX( - Math.PI / 2 ) );
+		var met = new THREE.MeshBasicMaterial({color:0xcccccc});
+		var plane = new THREE.Mesh(geo, met);
+		plane.castShadow = true;
+        plane.receiveShadow = true;
+		plane.position.set(1250, 0, -1250);
+		this.scene.add(plane);
 
-			}
-			// Hook pointer lock state change events
-			document.addEventListener('pointerlockchange', pointerlockchange, false);
-			document.addEventListener('mozpointerlockchange', pointerlockchange, false);
-			document.addEventListener('webkitpointerlockchange', pointerlockchange, false);
+		// prepare renderer
+		Game.renderer = new THREE.WebGLRenderer({
+			antialias : true
+		});
+		Game.renderer.setSize(Game.SCREEN_WIDTH, Game.SCREEN_HEIGHT);
+		Game.renderer.setClearColor(0x0000ff);
+		Game.renderer.shadowMapEnabled = true;
+		Game.renderer.shadowMapSoft = true;
 
-			document.addEventListener('pointerlockerror', pointerlockerror, false);
-			document.addEventListener('mozpointerlockerror', pointerlockerror, false);
-			document.addEventListener('webkitpointerlockerror', pointerlockerror, false);
+		// prepare container
+		Game.container = document.getElementById('container');
+		document.body.appendChild(Game.container);
+		Game.container.appendChild(Game.renderer.domElement);
 
-			instructions.addEventListener('click', function(event) {
-				instructions.style.display = 'none';
+		document.addEventListener('click', checkBirdHit)
+		window.addEventListener( 'resize', onWindowResize, false );
 
-				// Ask the browser to lock the pointer
-				element.requestPointerLock = element.requestPointerLock || element.mozRequestPointerLock || element.webkitRequestPointerLock;
+		// load a model
+		Game.loadTexture();
+		
 
-				if (/Firefox/i.test(navigator.userAgent)) {
-
-					var fullscreenchange = function(event) {
-
-						if (document.fullscreenElement === element || document.mozFullscreenElement === element || document.mozFullScreenElement === element) {
-
-							document.removeEventListener('fullscreenchange', fullscreenchange);
-							document.removeEventListener('mozfullscreenchange', fullscreenchange);
-
-							element.requestPointerLock();
-						}
-
-					}
-
-					document.addEventListener('fullscreenchange', fullscreenchange, false);
-					document.addEventListener('mozfullscreenchange', fullscreenchange, false);
-					element.requestFullscreen = element.requestFullscreen || element.mozRequestFullscreen || element.mozRequestFullScreen || element.webkitRequestFullscreen;
-
-					element.requestFullscreen();
-
-				} else {
-
-					document.addEventListener('click', checkBirdHit)
-					element.requestPointerLock();
-
-					// prepare renderer
-					Game.renderer = new THREE.WebGLRenderer({
-						antialias : true
-					});
-					Game.renderer.setSize(Game.SCREEN_WIDTH, Game.SCREEN_HEIGHT);
-					Game.renderer.setClearColor(0x0000ff);
-					Game.renderer.shadowMapEnabled = true;
-					Game.renderer.shadowMapSoft = true;
-
-					// prepare container
-					Game.container = document.getElementById('container');
-					document.body.appendChild(Game.container);
-					Game.container.appendChild(Game.renderer.domElement);
-
-					// add spot light
-					var spLight = new THREE.SpotLight(0xffffff, 1.75, 2000, Math.PI / 3);
-					spLight.castShadow = true;
-					spLight.position.set(-100, 300, -50);
-					// Game.scene.add(spLight);
-
-					var light = new THREE.AmbientLight(0x404040);
-					// soft white light
-					Game.scene.add(light);
-
-					// add gun light
-					Game.gunLight = new THREE.SpotLight(0xffffff);
-					Game.gunLight.position.y = 500;
-
-					Game.makeGunSite(function(mesh){
-						Game.gunSite = mesh;
-						Game.gunSite.scale.multiplyScalar(0.1);
-						Game.gunSite.name = "gunsite";
-	
-						//Game.scene.add(Game.gunSite);
-						
-					});
-
-					// // add simple ground
-					var ground = new THREE.Mesh(new THREE.BoxGeometry(10000, 10000, 1), new THREE.MeshLambertMaterial({
-						color : 0x999999
-					}));
-					ground.receiveShadow = true;
-					ground.position.set(0, -300, 0);
-					ground.rotation.x = -Math.PI / 2;
-					Game.scene.add(ground);
-
-					// load a model
-					Game.loadTexture();
-
-				}
-
-			}, false);
-
-		} else {
-
-			instructions.innerHTML = 'Your browser doesn\'t seem to support Pointer Lock API';
-
-		}
-		// this.loadMTLOBJ()
 	},
 	loadTexture : function() {
 		var oGame 		= this;
@@ -260,57 +184,56 @@ var Game = {
 			});
 
 			// Game.objGun = new THREE.Mesh(geo, met);
-			Game.objGun = new THREE.Object3D();
-			Game.objGun.add(object)
+			oGame.objGun = new THREE.Object3D();
+			oGame.objGun.add(object)
 			object.position.set(-2, -18, 9);
 			oGame.camera.add(oGame.objGun);
 			//Game.objGun.rotation.x = Math.PI / 2;
-			Game.objGun.position.set(18, -15, -148);
+			Game.objGun.position.set(18, -20, -148);
 			//object.position.set(20, -35, -130);
-			object.rotation.set(Math.PI / 16, Math.PI + (Math.PI / 18), 0, 'XYZ');
+			object.rotation.set(Math.PI/22, Math.PI + (Math.PI / 22), 0, 'XYZ');
 			// object.rotation.set(0, -Math.PI , 0, 'XYZ');
-			//oGame.objGun.scale.set(1, 1, 1);
+			oGame.objGun.scale.set(1, 1, 1);
 			oGame.scene.add(oGame.gunLight);
 			Game.gunLight.target = Game.objGun;
 			oGame.camera.updateProjectionMatrix();
-
-			Game.createEnemy();
+			
 			animate();
 
 		});
 	},
 	createEnemy : function() {
 		//console.log('create enemy');
-		var material = new THREE.MeshBasicMaterial({
-			color : 0xff0000,
-			side : THREE.DoubleSide
-		});
-		Game.controls.update();
-		var controlObj = Game.controls.getObject();
-		var pitchObj = Game.controls.pitchObject();
-		var delta = Game.clock.getDelta();
-		var theta = controlObj.rotation.y + (Math.random(Math.PI / 2) - Math.PI / 4);
-		var phi = (Math.PI / 2) - pitchObj.rotation.x;
-
-		var birdMesh = new FlappyBird(material, 8, (Math.random() * 50 + 700), 100, theta, phi);
-		var camRotation = this.controls.getRotation();
-		birdMesh.scale.set(5, 5, 5);
-		birdMesh.name = 'enemy';
-		this.scene.add(birdMesh);
-
-		if (this.aEnemy.length == undefined) {
-			this.aEnemy.push(birdMesh);
-		} else {
-
-			this.aEnemy[0] = birdMesh;
+		if(Game.controls.enabled){
+			var material = new THREE.MeshBasicMaterial({
+				color : 0xff0000,
+				side : THREE.DoubleSide
+			});
+			var controlObj = Game.controls.getObject();
+			var pitchObj = Game.controls.pitchObject();
+			var delta = Game.clock.getDelta();
+			var theta = controlObj.rotation.y + (Math.random(Math.PI / 2) - Math.PI / 4);
+			var phi = (Math.PI / 2) - pitchObj.rotation.x;
+	
+			var birdMesh = new FlappyBird(material, 8, (Math.random() * 50 + 700), 100, theta, phi);
+			var camRotation = this.controls.getRotation();
+			birdMesh.scale.set(5, 5, 5);
+			birdMesh.name = 'enemy';
+			this.scene.add(birdMesh);
+	
+			if (this.aEnemy.length == undefined) {
+				this.aEnemy.push(birdMesh);
+			} else {
+	
+				this.aEnemy[0] = birdMesh;
+			}
+			
 		}
-		render();
 	}
 };
 
 // Update controls and stats
 function checkBirdHit(event) {
-	 Game.controls.update(Game.clock.getDelta());
 	event.preventDefault();
 	if (Game.objGun == null || Game.objGun == undefined)
 		return;
@@ -451,48 +374,80 @@ function createGunSmoke() {
 }
 
 // Render the scene
+var  time = Date.now();
 function render() {
 	//var pointer = document.getElementById("pointer");
 	//pointer.style.left = mouse
-	Game.controls.update();
-	var controlObj = Game.controls.getObject();
-	var pitchObj = Game.controls.pitchObject();
-	var delta = Game.clock.getDelta();
-	var theta = controlObj.rotation.y;
-	var phi = (Math.PI / 2) - pitchObj.rotation.x;
-	////console.log('controls rotation = '+ JSON.stringify(Game.controls.getRotation()) );
+	if(Game.controls.enabled){
+		
+		var controlObj = Game.controls.getObject();
+		var pitchObj = Game.controls.pitchObject();
+		var delta = Game.clock.getDelta();
+		Game.controls.update( (Date.now() - time) * 20 );
+	 	time = Date.now();
+		//Game.controls.update(delta);
+		
+		var theta = controlObj.rotation.y;
+		var phi = (Math.PI / 2) - pitchObj.rotation.x;
+	
+		updateEnemy(theta, phi, controlObj.position.clone(), delta);
+		updateGunPosition(theta, phi, controlObj.position.clone());
+		gunRecoile(delta);
+		moveBullet(delta);
+		checkGunFire(delta);
+		checkBirdKill(delta);
+		updateWorld();
+		//	//console.log(' theta= '+(theta * (180/Math.PI))+ ' | phi = '+ (phi * (180/Math.PI)));
+		Game.renderer.render(Game.scene, Game.camera);
+	}
+
+}
+var updateWorld = function(){
+		var dt = 1/60;
+		CannonSetup.world.step(dt);
+		 // Update box positions
+		for(var i=0; i<Maze.aBoxes.length; i++){
+		    Maze.aWalls[i].position.copy(Maze.aBoxes[i].position);
+		    Maze.aWalls[i].quaternion.copy(Maze.aBoxes[i].quaternion);
+		}
+
+}
+var updateEnemy = function(theta, phi, position, delta){
 	if (Game.aEnemy.length > 0) {
-		var diff = Game.aEnemy[0].animate(controlObj, 2, delta);
-		var diff = Game.aEnemy[0].attack(controlObj, theta, phi, 2, delta);
+		var diff = Game.aEnemy[0].animate();
+		var diff = Game.aEnemy[0].attack(position, theta, phi, 2, delta);
 		Game.aEnemy[0].rotation.set(phi - (Math.PI / 2), theta + (Math.PI / 2), (Math.PI / 8), 'YXZ');
 		if (diff <= 5) {
 			removeEnemy();
 			Game.createEnemy();
 		}
 
+	}else{
+			Game.createEnemy();
 	}
+}
+var gunRecoile = function(delta){
 	if (Game.objGun.bRecoile) {
 		if (!recoile(Game.objGun, delta)) {
 			Game.objGun.bRecoile = false;
 		}
 	}
+}
+var updateGunPosition = function(theta, phi, position){
+		Game.gunSite.position.copy(position.clone().sub(getLocation(theta, phi, 150)));
+		Game.gunSite.rotation.set(-(phi - (Math.PI / 2)), theta, 0, 'YXZ');
+}
 
-	Game.gunSite.position.copy(controlObj.position.clone().sub(getLocation(theta, phi, 150)));
-	Game.gunSite.rotation.set(-(phi - (Math.PI / 2)), theta, 0, 'YXZ');
-
-	moveBullet();
-
+var checkGunFire  	 = function(delta){
 	if (Game.objGun.blast) {
 		Game.objGun.blast.animateParticles(delta);
 	}
+}
+var checkBirdKill  	 = function(delta){
 	if (Game.blast) {
 		Game.blast.animateParticles(delta);
 	}
-	//	//console.log(' theta= '+(theta * (180/Math.PI))+ ' | phi = '+ (phi * (180/Math.PI)));
-	Game.renderer.render(Game.scene, Game.camera);
-
 }
-
 var removeEnemy = function() {
 	for (var i = 0; i < Game.aEnemy.length; i++) {
 		var enemy = Game.aEnemy[i];
@@ -512,69 +467,6 @@ var getLocation = function(theta, phi, radius) {
 	return new THREE.Vector3(x, -y, z);
 }
 // Initialize lesson on page load
-function initGame() {
-	Game.init();
-
-}
-
-function onWindowResize() {
-
-	Game.SCREEN_Height = window.innerWidth / 2;
-	Game.SCREEN_HEIGHT = window.innerHeight / 2;
-
-	Game.camera.aspect = window.innerWidth / window.innerHeight;
-	Game.camera.updateProjectionMatrix();
-
-	Game.renderer.setSize(window.innerWidth, window.innerHeight);
-
-}
-
-function updateGun() {
-
-}
-
-// init 3D stuff
-
-function makeSkybox(urls, size) {
-	// //console.log(urls + ' | '+ size);
-	var skyboxCubemap = THREE.ImageUtils.loadTextureCube(urls);
-
-	skyboxCubemap.format = THREE.RGBFormat;
-
-	var skyboxShader = THREE.ShaderLib['cube'];
-	skyboxShader.uniforms['tCube'].value = skyboxCubemap;
-
-	return new THREE.Mesh(new THREE.BoxGeometry(size, size, size), new THREE.ShaderMaterial({
-		fragmentShader : skyboxShader.fragmentShader,
-		vertexShader : skyboxShader.vertexShader,
-		uniforms : skyboxShader.uniforms,
-		depthWrite : false,
-		side : THREE.BackSide
-	}));
-};
-
-function makePlatform(jsonUrl, textureUrl, textureQuality) {
-	var placeholder = new THREE.Object3D();
-
-	var texture = THREE.ImageUtils.loadTexture(textureUrl);
-	texture.anisotropy = textureQuality;
-
-	var loader = new THREE.JSONLoader();
-	loader.load(jsonUrl, function(geometry) {
-
-		geometry.computeFaceNormals();
-
-		var platform = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({
-			map : texture
-		}));
-
-		platform.name = "platform";
-
-		placeholder.add(platform);
-	});
-
-	return placeholder;
-};
 
 function createRay(p_vStart, p_vEnd) {
 	var mat = new THREE.LineBasicMaterial({

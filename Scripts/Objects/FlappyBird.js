@@ -28,14 +28,14 @@ FlappyBird.prototype.animate = function(){
 	this.geometry.verticesNeedUpdate = true;
 }
 
-FlappyBird.prototype.attack = function(_target, _theta, _phi, _speed, _delta){
+FlappyBird.prototype.attack = function(_position, _theta, _phi, _speed, _delta){
 	if(this.distance <= 0)return;
 	
-	var _position 		= _target.position.clone();
+	var position 		= _position.clone();
 	var phi 			= _phi;
 	var theta 			= _theta;
-	var _position 		= _position.sub( this.getLocation(this.theta, this.phi, this.distance));
-	this.setLocation(_position);
+	var position 		= position.sub( this.getLocation(this.theta, this.phi, this.distance));
+	this.setLocation(position);
 	this.distance -= (this.speed * _delta); 
 //	console.log(' theta= '+(theta * (180/Math.PI))+ ' | phi = '+ (phi * (180/Math.PI)));
 //	 console.log(' _position = '+JSON.stringify(_position));

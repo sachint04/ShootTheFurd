@@ -19,6 +19,8 @@
 		<script src="Scripts/libs/three.min.js" type="text/javascript" charset="utf-8"></script>
 		<script src="Scripts/libs/controls/FirstPersonControls.js" type="text/javascript" charset="utf-8"></script>
 		<script src="Scripts/libs/shaders/ParallaxShader.js"></script>
+		<script src="Scripts/libs/cannon.min.js"></script>
+		<script src="Scripts/CannonInit.js"></script>
 		<script src="Scripts/Utils/Loader.js" type="text/javascript" charset="utf-8"></script>
 	</head>
 
@@ -26,8 +28,8 @@
 		<div id="container">
 		</div>
 		<script>
-			var scene, camera,light,renderer, SCREEN_WIDTH, SCREEN_HEIGHT, controls, clock,spwanPoints,	brickmat,
-				brickBumpTexture,
+			var world, scene, camera, light,renderer, SCREEN_WIDTH, SCREEN_HEIGHT, controls, clock,spwanPoints,	brickmat,
+				brickBumpTexture,boxes = [],
 				map = 	'  XXXXXXXXX\n'+
 					'    	       X\n'+
 					'X S XXXXX     X\n'+
@@ -38,8 +40,9 @@
 					'X   S         X\n'+
 					'XXXXXXXXXXXXXXX\n';
 					
-				window.addEventListener( 'resize', onWindowResize, false );		
+				CannonSetup.init();		
 				init();
+
 				animate();
 					
 			
@@ -79,8 +82,6 @@
 				scene.add( pointLightHelper2 );
 
 				
-				
-				
 
 
 				//mainspotLight.position.set( 150, 100, -250);
@@ -114,13 +115,14 @@
 				
 				camera.lookAt(plane);
 				map = map.split('\n');
+                
 				var rows, cols;
 				for(var i= 0; i < map.length;  i++){
 					for(var j= 0; j < map[i].length;  j++){
 						addVoxel(map[i].charAt(j), i , j);
 					}
 				}
-				
+				console.log("boxes.length = "+ boxes.length+ " | CannonSetup.boxes = "+ CannonSetup.boxes.length)
 				// prepare renderer
 				renderer = new THREE.WebGLRenderer({
 					antialias : true
@@ -132,6 +134,7 @@
 				renderer.shadowMapSoft = true;
 				
 				document.getElementById('container').appendChild(renderer.domElement);
+				window.addEventListener( 'resize', onWindowResize, false );
 			}
 			
 			function addVoxel(type, row, col){
@@ -143,6 +146,11 @@
 				
 				var z = (row * -horizontal_unit) + (horizontal_unit/2) ;
 				var x = (col * horizontal_unit) + (vertical_unit/2);
+				
+				var halfExtents = new CANNON.Vec3(horizontal_unit/ 2, vertical_unit/2,horizontal_unit/2);
+                var boxShape = new CANNON.Box(halfExtents);
+
+				
 				console.log('addVoxel {  x = '+ x+' | z = '+z);
 				switch(type){
 					case ' ' :break;
@@ -151,12 +159,26 @@
 						spwanPoints.push(new THREE.Vector3(x, 0 , z));
 					break;
 					case 'X' :
-						//console.log('brickmat = '+ brickmat);
+					 physicsMaterial = new CANNON.Material("slipperyMaterial");
+               		 var physicsContactMaterial = new CANNON.ContactMaterial(physicsMaterial,
+                                                                        physicsMaterial,
+                                                                        0.0, // friction coefficient
+                                                                        0.3  // restitution
+                                                                        );
+               
+                   		var boxBody = new CANNON.Body({ mass: 5, material:physicsContactMaterial });
+                    	boxBody.addShape(boxShape);
+		               	boxBody.position.set(x , vertical_unit * 0.5, z);
+						world.add(boxBody);
+						CannonSetup.boxes.push(boxBody);
+						
 						var geo 	= new THREE.CubeGeometry(horizontal_unit, vertical_unit, horizontal_unit);
-				//		var met 	= new THREE.MeshPhongMaterial({ambient: 0x552811, color: 0x552811, specular: 0x333333, shininess: 25, map:brickmat});
 						var mesh 	= new THREE.Mesh(geo, brickmat);
 						mesh.position.set(x , vertical_unit * 0.5, z);
+		                mesh.castShadow = true;
+		                mesh.receiveShadow = true;
 						scene.add(mesh);
+						boxes.push(mesh);
 						break;
 										
 				}
@@ -165,8 +187,15 @@
 				requestAnimationFrame( animate );
 				render();
 			}
+			
 			function render(){
 				var delta = clock.getDelta();
+				 world.step(CannonSetup.dt);
+				 
+				 for(var i=0;i<CannonSetup.boxes.length;i++){
+				 	boxes[i].position.copy(CannonSetup.boxes[i].position);
+				 	boxes[i].quaternion.copy(CannonSetup.boxes[i].quaternion);
+				 }
 //				controls.movementSpeed 	= 1 * delta;
 				controls.update( delta );
 				renderer.render(scene, camera);

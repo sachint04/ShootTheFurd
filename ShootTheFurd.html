@@ -17,13 +17,18 @@
 		<link rel="shortcut icon" href="/favicon.ico" />
 		<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 		<link rel="stylesheet" href="css/style.css" type="text/css" media="screen" title="no title" charset="utf-8"/>
+		
+		
+
 
 		<!-- 		<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r70/three.min.js" type="text/javascript" charset="utf-8"></script> -->
 		<script src="Scripts/libs/three.min.js" type="text/javascript" charset="utf-8"></script>
+		<script src="Scripts/libs/cannon.min.js"></script>
+		<script src="Scripts/libs/CannonPointerLockControls.js" type="text/javascript" charset="utf-8"></script>
 		<script src="Scripts/libs/loaders/MTLLoader.js"></script>
 		<script src="Scripts/libs/loaders/OBJLoader.js"></script>
 		<script src="Scripts/libs/loaders/OBJMTLLoader.js"></script>
-		<script src="Scripts/libs/controls/PointerLockControls.js"></script>
+<!-- 		<script src="Scripts/libs/controls/PointerLockControls.js"></script> -->
 		<script src="Scripts/libs/renderers/Projector.js"></script>
 		<script src="Scripts/libs/Obj/Bird.js" type="text/javascript" charset="utf-8"></script>
 		
@@ -33,6 +38,9 @@
 		<script src="Scripts/Effects/blast.js"></script>
 		<script src="Scripts/Objects/Bullet.js"></script>
 		<script src="Scripts/Utils/Loader.js"></script>
+		<script src="Scripts/Maze_level.js"></script>
+		<script src="Scripts/CannonInit.js"></script>
+		
 		<script src="Scripts/Game.js" type="text/javascript" charset="utf-8"></script>
 
 
@@ -68,25 +76,113 @@
 			0
 		</div>
 		<script type="text/javascript" charset="utf-8">
+				
+				
+		 var blocker = document.getElementById( 'blocker' );
+            var instructions = document.getElementById( 'instructions' );
+
+            var havePointerLock = 'pointerLockElement' in document || 'mozPointerLockElement' in document || 'webkitPointerLockElement' in document;
+
+            if ( havePointerLock ) {
+
+                var element = document.body;
+
+                var pointerlockchange = function ( event ) {
+
+                    if ( document.pointerLockElement === element || document.mozPointerLockElement === element || document.webkitPointerLockElement === element ) {
+
+                        Game.controls.enabled = true;
+
+                        blocker.style.display = 'none';
+
+                    } else {
+
+                        Game.controls.enabled = false;
+
+                        blocker.style.display = '-webkit-box';
+                        blocker.style.display = '-moz-box';
+                        blocker.style.display = 'box';
+
+                        instructions.style.display = '';
+
+                    }
+
+                }
+
+                var pointerlockerror = function ( event ) {
+                    instructions.style.display = '';
+                }
+
+                // Hook pointer lock state change events
+                document.addEventListener( 'pointerlockchange', pointerlockchange, false );
+                document.addEventListener( 'mozpointerlockchange', pointerlockchange, false );
+                document.addEventListener( 'webkitpointerlockchange', pointerlockchange, false );
+
+                document.addEventListener( 'pointerlockerror', pointerlockerror, false );
+                document.addEventListener( 'mozpointerlockerror', pointerlockerror, false );
+                document.addEventListener( 'webkitpointerlockerror', pointerlockerror, false );
+
+                instructions.addEventListener( 'click', function ( event ) {
+                    instructions.style.display = 'none';
+
+                    // Ask the browser to lock the pointer
+                    element.requestPointerLock = element.requestPointerLock || element.mozRequestPointerLock || element.webkitRequestPointerLock;
+
+                    if ( /Firefox/i.test( navigator.userAgent ) ) {
+
+                        var fullscreenchange = function ( event ) {
+
+                            if ( document.fullscreenElement === element || document.mozFullscreenElement === element || document.mozFullScreenElement === element ) {
+
+                                document.removeEventListener( 'fullscreenchange', fullscreenchange );
+                                document.removeEventListener( 'mozfullscreenchange', fullscreenchange );
+
+                                element.requestPointerLock();
+                            }
+
+                        }
+
+                        document.addEventListener( 'fullscreenchange', fullscreenchange, false );
+                        document.addEventListener( 'mozfullscreenchange', fullscreenchange, false );
+
+                        element.requestFullscreen = element.requestFullscreen || element.mozRequestFullscreen || element.mozRequestFullScreen || element.webkitRequestFullscreen;
+
+                        element.requestFullscreen();
+
+                    } else {
+
+                        element.requestPointerLock();
+
+                    }
+
+                }, false );
+
+            } else {
+
+                instructions.innerHTML = 'Your browser doesn\'t seem to support Pointer Lock API';
+
+            }
+	
+		CannonSetup.init();
+		Game.init();
+		Maze.level(Game.scene, CannonSetup.world)
+		//Game.addLevel()
+		//animat();
+		// Animate the scene
+		function animate() {
+			requestAnimationFrame(animate);
+			render();
+		}
 			
-
-			// Animate the scene
-			function animate() {
-				requestAnimationFrame(animate);
-
-				// update();
-				render();
-			}
-
+ 		function onWindowResize() {
+                Game.camera.aspect = window.innerWidth / window.innerHeight;
+                Game.camera.updateProjectionMatrix();
+                Game.renderer.setSize( window.innerWidth, window.innerHeight );
+            }
 		
 			
 			//window.addEventListener('resize', onWindowResize);
-			if (window.addEventListener)
-				window.addEventListener('load', initGame, false);
-			else if (window.attachEvent)
-				window.attachEvent('onload', initGame);
-			else
-				window.onload = initGame;
+		
 		</script>
 	</body>
 </html>

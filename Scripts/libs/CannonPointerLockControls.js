@@ -2,183 +2,221 @@
  * @author mrdoob / http://mrdoob.com/
  * @author schteppe / https://github.com/schteppe
  */
- var PointerLockControls = function ( camera, cannonBody ) {
+define(['three','cannon', 'shell'], function(THREE, CANNON, Shell) {
 
-    var eyeYPos = 2; // eyes are 2 meters above the ground
-    var velocityFactor = 0.5;
-    var jumpVelocity = 20;
-    var scope = this;
+	var PointerLockControls = function(camera, _cannonBody) {
 
-    var pitchObject = new THREE.Object3D();
-    pitchObject.add( camera );
+		this.eyeYPos = 2;
+		// eyes are 2 meters above the ground
+		this.velocityFactor = 0.5;
+		this.jumpVelocity = 20;
+		this.scope = this;
+		this.cannonBody = _cannonBody;
+		this.pitchObject = new THREE.Object3D();
+		this.pitchObject.add(camera);
 
-    var yawObject = new THREE.Object3D();
-    yawObject.position.y = 2;
-    yawObject.add( pitchObject );
+		this.yawObject = new THREE.Object3D();
+		this.yawObject.position.y = 2;
+		this.yawObject.add(this.pitchObject);
 
-    var quat = new THREE.Quaternion();
+		this.quat = new THREE.Quaternion();
 
-    var moveForward = false;
-    var moveBackward = false;
-    var moveLeft = false;
-    var moveRight = false;
+		this.moveForward = false;
+		this.moveBackward = false;
+		this.moveLeft = false;
+		this.moveRight = false;
 
-    var canJump = false;
+		this.canJump = false;
 
-    var contactNormal = new CANNON.Vec3(); // Normal in the contact, pointing *out* of whatever the player touched
-    var upAxis = new CANNON.Vec3(0,1,0);
-    cannonBody.addEventListener("collide",function(e){
-        var contact = e.contact;
+		this.contactNormal = new CANNON.Vec3();
+		// Normal in the contact, pointing *out* of whatever the player touched
+		this.upAxis = new CANNON.Vec3(0, 1, 0);
 
-        // contact.bi and contact.bj are the colliding bodies, and contact.ni is the collision normal.
-        // We do not yet know which one is which! Let's check.
-        if(contact.bi.id == cannonBody.id)  // bi is the player body, flip the contact normal
-            contact.ni.negate(contactNormal);
-        else
-            contactNormal.copy(contact.ni); // bi is something else. Keep the normal as it is
+		this.velocity = this.cannonBody.velocity;
 
-        // If contactNormal.dot(upAxis) is between 0 and 1, we know that the contact normal is somewhat in the up direction.
-        if(contactNormal.dot(upAxis) > 0.5) // Use a "good" threshold value between 0 and 1 here!
-            canJump = true;
-    });
+		this.PI_2 = Math.PI / 2;
 
-    var velocity = cannonBody.velocity;
+		this.enabled = false;
 
-    var PI_2 = Math.PI / 2;
+		// Moves the camera to the Cannon.js object position and adds velocity to the object if the run key is down
+		this.inputVelocity = new THREE.Vector3();
+		this.euler = new THREE.Euler();
 
-    var onMouseMove = function ( event ) {
 
-        if ( scope.enabled === false ) return;
+		this.onMouseMove = this.onMouseMove.bind(this);
+		this.onKeyDown 	= this.onKeyDown.bind(this);
+		this.onKeyUp 	= this.onKeyUp.bind(this);
+		this.onCollide 	= this.onCollide.bind(this);
+		this.update 	= this.update.bind(this);
 
-        var movementX = event.movementX || event.mozMovementX || event.webkitMovementX || 0;
-        var movementY = event.movementY || event.mozMovementY || event.webkitMovementY || 0;
+		document.addEventListener('mousemove', this.onMouseMove, false);
+		document.addEventListener('keydown', this.onKeyDown, false);
+		document.addEventListener('keyup', this.onKeyUp, false);
+		this.cannonBody.addEventListener("collide", this.onCollide, false);
+	};
 
-        yawObject.rotation.y -= movementX * 0.002;
-        pitchObject.rotation.x -= movementY * 0.002;
+	PointerLockControls.prototype.onCollide = function(e) {
+		var contact = e.contact;
 
-        pitchObject.rotation.x = Math.max( - PI_2, Math.min( PI_2, pitchObject.rotation.x ) );
-    };
+		// contact.bi and contact.bj are the colliding bodies, and contact.ni is the collision normal.
+		// We do not yet know which one is which! Let's check.
+		if (contact.bi.id == this.cannonBody.id)// bi is the player body, flip the contact normal
+			contact.ni.negate(this.contactNormal);
+		else
+			this.contactNormal.copy(contact.ni);
+		// bi is something else. Keep the normal as it is
 
-    var onKeyDown = function ( event ) {
+		// If contactNormal.dot(upAxis) is between 0 and 1, we know that the contact normal is somewhat in the up direction.
+		if (this.contactNormal.dot(this.upAxis) > 0.5)// Use a "good" threshold value between 0 and 1 here!
+			this.canJump = true;
+	};
 
-        switch ( event.keyCode ) {
+	PointerLockControls.prototype.onKeyDown = function(event) {
 
-            case 38: // up
-            case 87: // w
-                moveForward = true;
-                break;
+		switch ( event.keyCode ) {
 
-            case 37: // left
-            case 65: // a
-                moveLeft = true; break;
+			case 38:
+			// up
+			case 87:
+				// w
+				this.moveForward = true;
+				break;
 
-            case 40: // down
-            case 83: // s
-                moveBackward = true;
-                break;
+			case 37:
+			// left
+			case 65:
+				// a
+				this.moveLeft = true;
+				break;
 
-            case 39: // right
-            case 68: // d
-                moveRight = true;
-                break;
+			case 40:
+			// down
+			case 83:
+				// s
+				this.moveBackward = true;
+				break;
 
-            case 32: // space
-                if ( canJump === true ){
-                    velocity.y = jumpVelocity;
-                }
-                canJump = false;
-                break;
-        }
+			case 39:
+			// right
+			case 68:
+				// d
+				this.moveRight = true;
+				break;
 
-    };
+			case 32:
+				// space
+				if (this.canJump === true) {
+					this.velocity.y = this.jumpVelocity;
+				}
+				this.canJump = false;
+				break;
+		}
 
-    var onKeyUp = function ( event ) {
+	};
 
-        switch( event.keyCode ) {
+	PointerLockControls.prototype.onKeyUp = function(event) {
 
-            case 38: // up
-            case 87: // w
-                moveForward = false;
-                break;
+		switch( event.keyCode ) {
 
-            case 37: // left
-            case 65: // a
-                moveLeft = false;
-                break;
+			case 38:
+			// up
+			case 87:
+				// w
+				this.moveForward = false;
+				break;
 
-            case 40: // down
-            case 83: // a
-                moveBackward = false;
-                break;
+			case 37:
+			// left
+			case 65:
+				// a
+				this.moveLeft = false;
+				break;
 
-            case 39: // right
-            case 68: // d
-                moveRight = false;
-                break;
+			case 40:
+			// down
+			case 83:
+				// a
+				this.moveBackward = false;
+				break;
 
-        }
+			case 39:
+			// right
+			case 68:
+				// d
+				this.moveRight = false;
+				break;
 
-    };
+		}
 
-    document.addEventListener( 'mousemove', onMouseMove, false );
-    document.addEventListener( 'keydown', onKeyDown, false );
-    document.addEventListener( 'keyup', onKeyUp, false );
+	};
 
-    this.enabled = false;
+	PointerLockControls.prototype.update = function(delta) {
 
-    this.getObject = function () {
-        return yawObject;
-    };
-	
-	this.pitchObject = function(){
-		return pitchObject;
+		if (this.enabled === false)
+			return;
+
+		delta *= 0.1;
+
+		this.inputVelocity.set(0, 0, 0);
+
+		if (this.moveForward) {
+			this.inputVelocity.z = -this.velocityFactor * delta;
+		}
+		if (this.moveBackward) {
+			this.inputVelocity.z = this.velocityFactor * delta;
+		}
+
+		if (this.moveLeft) {
+			this.inputVelocity.x = -this.velocityFactor * delta;
+		}
+		if (this.moveRight) {
+			this.inputVelocity.x = this.velocityFactor * delta;
+		}
+
+		// Convert velocity to world coordinates
+		this.euler.x = this.pitchObject.rotation.x;
+		this.euler.y = this.yawObject.rotation.y;
+		this.euler.order = "XYZ";
+		this.quat.setFromEuler(this.euler);
+		this.inputVelocity.applyQuaternion(this.quat);
+		//quat.multiplyVector3(inputVelocity);
+
+		// Add to the object
+		this.velocity.x += this.inputVelocity.x;
+		this.velocity.z += this.inputVelocity.z;
+
+		this.yawObject.position.copy(this.cannonBody.position);
+	};
+
+	PointerLockControls.prototype.onMouseMove = function(event) {
+
+		if (this.enabled === false)
+			return;
+
+		var movementX = event.movementX || event.mozMovementX || event.webkitMovementX || 0;
+		var movementY = event.movementY || event.mozMovementY || event.webkitMovementY || 0;
+
+		this.yawObject.rotation.y -= this.movementX * 0.002;
+		this.pitchObject.rotation.x -= this.movementY * 0.002;
+
+		this.pitchObject.rotation.x = Math.max(-this.PI_2, Math.min(this.PI_2, this.pitchObject.rotation.x));
+	};
+
+	PointerLockControls.prototype.getRotation = function() {
+		return new THREE.Vector3(this.pitchObject.rotation.x, this.yawObject.rotation.y, 0);
 	}
-    this.getDirection = function(targetVec){
-        targetVec.set(0,0,-1);
-        quat.multiplyVector3(targetVec);
-    }
 
-    // Moves the camera to the Cannon.js object position and adds velocity to the object if the run key is down
-    var inputVelocity = new THREE.Vector3();
-    var euler = new THREE.Euler();
-    this.update = function ( delta ) {
+	PointerLockControls.prototype.getObject = function() {
+		return this.yawObject;
+	};
 
-        if ( scope.enabled === false ) return;
-
-        delta *= 0.1;
-
-        inputVelocity.set(0,0,0);
-
-        if ( moveForward ){
-            inputVelocity.z = -velocityFactor * delta;
-        }
-        if ( moveBackward ){
-            inputVelocity.z = velocityFactor * delta;
-        }
-
-        if ( moveLeft ){
-            inputVelocity.x = -velocityFactor * delta;
-        }
-        if ( moveRight ){
-            inputVelocity.x = velocityFactor * delta;
-        }
-
-        // Convert velocity to world coordinates
-        euler.x = pitchObject.rotation.x;
-        euler.y = yawObject.rotation.y;
-        euler.order = "XYZ";
-        quat.setFromEuler(euler);
-        inputVelocity.applyQuaternion(quat);
-        //quat.multiplyVector3(inputVelocity);
-
-        // Add to the object
-        velocity.x += inputVelocity.x;
-        velocity.z += inputVelocity.z;
-
-        yawObject.position.copy(cannonBody.position);
-    };
-
-	this.getRotation = function(){
-		return new THREE.Vector3(pitchObject.rotation.x, yawObject.rotation.y, 0);
+	PointerLockControls.prototype.getPitchObject = function() {
+		return this.pitchObject;
 	}
-};
+	PointerLockControls.prototype.getDirection = function(targetVec) {
+		targetVec.set(0, 0, -1);
+		this.quat.multiplyVector3(targetVec);
+	}
+
+	return PointerLockControls;
+});

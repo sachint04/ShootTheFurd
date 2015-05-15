@@ -27,10 +27,14 @@ define(['shell'], function(Shell){
 	 
 	
 	Vision.prototype.animate = function(){
-		// Shell.log("State Changed to 'animate'!!");
+		//Shell.log("State Changed to 'animate'!!");
 		requestAnimationFrame(this.animate);
 		this.render();
 	}; 
+	
+	Vision.prototype.render = function(){
+		Shell.log('BaseController render()');
+	}
 	Vision.prototype.end = function(){
 		Shell.log("State Changed to 'end'!!");
 	}; 

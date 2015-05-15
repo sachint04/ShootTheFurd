@@ -4,7 +4,7 @@
 define(['three', 'shell'], function(THREE, Shell){
  	var Bullet = function(_vStart, _theta, _phi, _speed, _maxDistance, _hitTarget){
  		THREE.Mesh.call(this, new THREE.SphereGeometry(3, 12, 12), new THREE.MeshBasicMaterial({color:0xffcc00}));
-		console.log('Bullet Constructor')
+		Shell.log('Bullet Constructor')
 		this.hitTarget = _hitTarget;
 		this.theta = _theta;
 		this.starPos = _vStart;
@@ -45,7 +45,7 @@ function Bullet(_vStart, _theta, _phi, _speed, _maxDistance, _hitTarget){
 	
 	THREE.Mesh.call(this, new THREE.SphereGeometry(3, 12, 12), new THREE.MeshBasicMaterial({color:0xffcc00}));
 	
-	console.log('Bullet Constructor')
+	Shell.log('Bullet Constructor')
 	this.hitTarget = _hitTarget;
 	this.theta = _theta;
 	this.starPos = _vStart;

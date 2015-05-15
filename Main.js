@@ -1,29 +1,18 @@
 require.config({
-	baseUrl : "Scripts/",
+	baseUrl : "./",
 	paths : {
-		'three' 					: 'libs/three.min',
-		'cannon' 					: 'libs/cannon.min',
-		"vision" 					: "Base/Controller/GameController",
+		'three' 					: 'Scripts/libs/three.min',
+		'cannon' 					: 'Scripts/libs/cannon.min',
 		"game" 						: "Game",
-		'physics' 					: 'CannonInit',
-		'maze' 						: 'Maze_level',
-		'MTLLoader' 				: 'libs/loaders/MTLLoader',
-		'OBJLoader' 				: 'libs/loaders/OBJLoader',
-		'Projector' 				: 'libs/renderers/Projector',
-		'Bird' 						: 'libs/Obj/Bird',
-		'PointerLockControls' 		: 'libs/CannonPointerLockControls',
-		'shell' 					: 'Base/utils/Shell'
+		'MTLLoader' 				: 'Scripts/libs/loaders/MTLLoader',
+		'OBJLoader' 				: 'Scripts/libs/loaders/OBJLoader',
+		'Projector' 				: 'Scripts/libs/renderers/Projector',
+		'shell' 					: 'Scripts/Base/utils/Shell'
 	},
 	shim : {
 		'three':{
 			exports:'THREE'
 		},
-		 "physics" : {
-		 	deps:["cannon"]
-		 },
-		 "maze" :{
-		 	deps:["cannon"]
-		 },
 		 "cannon":{
 		 	exports:'CANNON'
 		 },
@@ -38,10 +27,6 @@ require.config({
 		 'Projector' :{
 		 	deps:['three'],
 		 	exports: 'Projector'
-		 },
-		 'Bird' :{
-		 	deps:['three'],
-		 	exports: 'Bird'
 		 }
 
 	}
@@ -49,11 +34,9 @@ require.config({
 	 // waitSeconds: 15
 });
 
-require(['physics',
-		'game', 
-		'maze',
+require(['game', 
 		'shell'], 
-function(Physics, Game,  Maze, Shell) {
+function(Game, Shell) {
 	var blocker = document.getElementById('blocker');
 	var instructions = document.getElementById('instructions');
 	var havePointerLock = 'pointerLockElement' in document || 'mozPointerLockElement' in document || 'webkitPointerLockElement' in document;
@@ -71,13 +54,13 @@ function(Physics, Game,  Maze, Shell) {
 
 			if (document.pointerLockElement === element || document.mozPointerLockElement === element || document.webkitPointerLockElement === element) {
 
-				game.setControlsEnabled(true) ;
+				game.controls.enabled = true;
 
 				blocker.style.display = 'none';
 
 			} else {
 
-				game.setControlsEnabled(false);
+				game.controls.enabled = false;
 
 				blocker.style.display = '-webkit-box';
 				blocker.style.display = '-moz-box';
@@ -140,7 +123,7 @@ function(Physics, Game,  Maze, Shell) {
 
 	instructions.innerHTML = 'Your browser doesn\'t seem to support Pointer Lock API';
 
-	}
+	}
 
 
 
